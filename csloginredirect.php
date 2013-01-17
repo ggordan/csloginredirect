@@ -1,10 +1,10 @@
 <?php
 /**
- * @package WP-Login-Redirect
+ * @package csloginredirect
  */
 /*
 Plugin Name: Login Redirect
-Plugin URI: https://github.com/ggordan/WP-Login-Redirect
+Plugin URI: https://github.com/ggordan/csloginredirect
 Description: A simple plugin that redirects the user to a specified page once they log in, by default, the site homepage.
 Version: 0.5
 Author: Gordan Grasarevic
