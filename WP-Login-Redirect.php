@@ -165,12 +165,11 @@ function login_redirect_options() {
     
     $disable_all = (strlen($current_roles->global->disable_all)) ? 'checked="checked"' : null;
     $redirect_disable = (strlen($current_roles->global->global_redirect_disabled)) ? 'checked="checked"' : null;
-
+    
     $global_redirect_inner = null;
     // Check for global redirect hidden value
-    if (isset($current_roles->global->global_redirect_inner)) {
-        
-        $global_redirect_inner = '<input type="hidden" value="' . $current_roles->global->global_redirect_inner . '" id="global_redirect_hidden"  />';
+    if (!empty($current_roles->global->global_redirect_inner)) {
+        $global_redirect_inner = '<input type="hidden" value="' . $current_roles->global->global_redirect_inner . '" id="global_redirect_hidden" name="global_redirect_inner"  />';
     }
     
     ?>
@@ -292,13 +291,49 @@ function suggest_redirect_callback() {
 function login_redirect_to($user_login, $user) {
     global $user;
     $current_redirects = json_decode(get_option( LOGIN_REDIRECT_OPTION ));
-    
-    // Check if all redireects have been disabled
-    if(!strlen($current_redirects->disable_all))  {
+	$post_url = null;
+	
+	// handle global redirects -- rewrite
+  	if(!strlen($current_redirects->global->disable_all) && !strlen($current_redirects->global->global_redirect_disabled))  {
+		if(!empty($current_redirects->global->global_redirect_url)) {
+			if(!preg_match("#((http|https|ftp)://(\S*?\.\S*?))(\s|\;|\)|\]|\[|\{|\}|,|\"|'|:|\<|$|\.\s)#ie", 
+				$current_redirects->global->global_redirect_url) && $current_redirects->global->global_redirect_url != '<front>') {
+				if(!empty($current_redirects->global->global_redirect_inner) && is_numeric((int)$current_redirects->global->global_redirect_inner)) {
+					$post_url = get_permalink($current_redirects->global->global_redirect_inner);
+				}
+			} else {
+				if($current_redirects->global->url == '<front>') {
+					$current_redirects->global->url = get_home_url();
+				} else { $post_url = $current_redirects->global->url; }
+			}
+		}
+		
+		if( $post_url ) {
+			wp_redirect( $post_url, $status = 302 );
+			exit();
+		}
+	}
+	
+	// handle all other redirects
+	if(!strlen($current_redirects->global->disable_all)) {
         if ( count( $user->roles )) {
-            if (in_array('subscriber', $user->roles) && !in_array('administrator', $user->roles)) {
-                $redirect_to = get_option( 'login_redirect_e' );
-                wp_redirect( $redirect_to, $status = 302 );
+			// get shortcut to the current user roleurl
+			$redir = $current_redirects->redirects->{$user->roles[0]};
+			if (!$redir->disabled && !empty($redir->url)) {
+				if(!preg_match("#((http|https|ftp)://(\S*?\.\S*?))(\s|\;|\)|\]|\[|\{|\}|,|\"|'|:|\<|$|\.\s)#ie", $redir->url) && $redir->url != '<front>') {
+					if(!empty($redir->inner) && is_numeric((int)$redir->inner)) {
+						$post_url = get_permalink($redir->inner);
+					}
+				} else {
+					if($redir->url == '<front>') {
+						$post_url = get_home_url();
+					} else { $post_url = $redir->url; }
+				}
+			}
+			
+			if( $post_url ) {
+	            wp_redirect( $post_url, $status = 302 );
+	            exit(); // must exit
             }
         }
     }
